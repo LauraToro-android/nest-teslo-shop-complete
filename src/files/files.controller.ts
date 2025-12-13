@@ -7,6 +7,7 @@ import {
   UseInterceptors,
   BadRequestException,
   Res,
+  Delete,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiTags } from '@nestjs/swagger';
@@ -17,6 +18,10 @@ import { diskStorage } from 'multer';
 import { FilesService } from './files.service';
 
 import { fileFilter, fileNamer } from './helpers';
+
+import { unlinkSync, existsSync } from 'fs';
+import { join } from 'path';
+
 
 @ApiTags('Files - Get and Upload')
 @Controller('files')
@@ -59,4 +64,19 @@ export class FilesController {
 
     return { secureUrl, fileName: file.filename };
   }
+  @Delete('product/:imageName')
+  deleteProductImage(
+    @Param('imageName') imageName: string,
+  ) {
+    const imagePath = join(process.cwd(), 'static/products', imageName);
+
+    if (!existsSync(imagePath)) {
+      throw new BadRequestException(`Image ${imageName} not found`);
+    }
+
+    unlinkSync(imagePath);
+
+    return { message: 'Image deleted', fileName: imageName };
+  }
+
 }
