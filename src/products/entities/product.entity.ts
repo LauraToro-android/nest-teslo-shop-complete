@@ -3,6 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 
 import { ProductImage } from './';
 import { User } from '../../auth/entities/user.entity';
+import { ProductStock } from './product-stock.entity';
 
 @Entity({ name: 'products' })
 export class Product {
@@ -55,15 +56,23 @@ export class Product {
     })
     slug: string;
 
-    @ApiProperty({
-        example: 10,
-        description: 'Product stock',
-        default: 0
-    })
-    @Column('int', {
-        default: 0
-    })
-    stock: number;
+    @ApiProperty()
+    @OneToMany(
+        () => ProductStock,
+        (stockEntry) => stockEntry.product, // El campo 'product' en la otra entidad
+        { cascade: true, eager: true } 
+    )
+    stockEntries?: ProductStock[];
+
+    //@ApiProperty({
+    //    example: 10,
+    //    description: 'Product stock',
+    //    default: 0
+    //})
+    //@Column('int', {
+    //    default: 0
+    //})
+    //stock: number;
 
     @ApiProperty({
         example: ['M','XL','XXL'],

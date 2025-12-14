@@ -3,6 +3,21 @@ import { IsArray, IsIn, IsInt, IsNumber, IsOptional,
          IsPositive, IsString, MinLength 
 } from 'class-validator';
 
+import { Type } from 'class-transformer';
+import { ValidateNested } from 'class-validator';
+
+export class ProductStockEntryDto {
+    
+    @ApiProperty({ description: 'Talla (ej. S, M, L)' })
+    @IsString()
+    size: string;
+
+    @ApiProperty({ description: 'Cantidad disponible para esta talla' })
+    @IsInt() 
+    @IsPositive()
+    quantity: number;
+}
+
 
 export class CreateProductDto {
 
@@ -31,16 +46,17 @@ export class CreateProductDto {
     @IsOptional()
     slug?: string;
 
-    @ApiProperty()
-    @IsInt()
-    @IsPositive()
-    @IsOptional()
-    stock?: number; 
+    //@ApiProperty()
+    //@IsInt()
+    //@IsPositive()
+    //@IsOptional()
+    //stock?: number; 
 
     @ApiProperty()
     @IsString({ each: true })
     @IsArray()
-    sizes: string[]
+    @IsOptional()
+    sizes?: string[]
 
     @ApiProperty()
     @IsIn(['men','women','kid','unisex'])
@@ -57,6 +73,13 @@ export class CreateProductDto {
     @IsArray()
     @IsOptional()
     images?: string[];
+
+    @ApiProperty({ description: 'Arreglo de entradas de stock por talla', type: [ProductStockEntryDto], required: false })
+    @IsOptional() 
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => ProductStockEntryDto) 
+    stockEntries?: ProductStockEntryDto[];
 
 
 }

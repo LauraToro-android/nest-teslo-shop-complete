@@ -14,6 +14,7 @@ import { PaginationDto } from 'src/common/dtos/pagination.dto';
 
 import { validate as isUUID } from 'uuid';
 import { ProductImage, Product } from './entities';
+import { ProductStock } from './entities/product-stock.entity';
 import { User } from '../auth/entities/user.entity';
 
 @Injectable()
@@ -27,26 +28,40 @@ export class ProductsService {
     @InjectRepository(ProductImage)
     private readonly productImageRepository: Repository<ProductImage>,
 
+    @InjectRepository(ProductStock)
+    private readonly productStockRepository: Repository<ProductStock>,
+
     private readonly dataSource: DataSource,
   ) {}
 
   async create(createProductDto: CreateProductDto, user: User) {
     try {
-      const { images = [], ...productDetails } = createProductDto;
+        // 1. Desestructurar el DTO: Ahora extraemos 'images' Y 'stockEntries' (ambos opcionales)
+        const { images = [], stockEntries = [], sizes = [], ...productDetails } = createProductDto;
 
-      const product = this.productRepository.create({
-        ...productDetails,
-        images: images.map((image) =>
-          this.productImageRepository.create({ url: image }),
-        ),
-        user,
-      });
+        // 2. Crear la instancia del producto
+        const product = this.productRepository.create({
+            ...productDetails,
+            user,
+            sizes: sizes,
+            // Mapear URLs a entidades ProductImage
+            images: images.map( url => this.productImageRepository.create({ url }) ),
+            
+            // 3. Mapear las entradas de stock del DTO a entidades ProductStock
+            stockEntries: stockEntries.map(entry => 
+                this.productStockRepository.create(entry)
+            ),
+        });
 
-      await this.productRepository.save(product);
+        // 4. Guardar en la DB (Gracias al 'cascade: true', TypeORM guarda el producto y todas las stockEntries)
+        await this.productRepository.save( product );
 
-      return { ...product, images };
+        // 5. Retornar el producto (el Front-End sigue esperando un formato similar)
+        // Usamos findOnePlain para limpiar el objeto de retorno
+        return this.findOnePlain(product.id); 
+
     } catch (error) {
-      this.handleDBExceptions(error);
+        this.handleDBExceptions(error);
     }
   }
 
@@ -109,7 +124,7 @@ export class ProductsService {
   }
 
   async update(id: string, updateProductDto: UpdateProductDto, user: User) {
-    const { images, ...toUpdate } = updateProductDto;
+    const { images, stockEntries, ...toUpdate } = updateProductDto;
 
     const product = await this.productRepository.preload({ id, ...toUpdate });
 
@@ -128,6 +143,20 @@ export class ProductsService {
         product.images = images.map((image) =>
           this.productImageRepository.create({ url: image }),
         );
+      }
+
+      if (stockEntries && stockEntries.length > 0) {
+        // 1. Borrar todas las entradas de stock antiguas
+        await queryRunner.manager.delete(ProductStock, { product: { id } });
+        
+        // 2. Crear las nuevas entradas de stock
+        product.stockEntries = stockEntries.map(entry => 
+            this.productStockRepository.create(entry)
+        );
+      } else if (stockEntries && stockEntries.length === 0) {
+        // Opcional: Si el cliente envía un arreglo vacío, borra todos los stocks
+         await queryRunner.manager.delete(ProductStock, { product: { id } });
+         product.stockEntries = [];
       }
 
       // await this.productRepository.save( product );
