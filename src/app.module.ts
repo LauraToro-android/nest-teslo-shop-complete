@@ -30,7 +30,7 @@ import { MessagesWsModule } from './messages-ws/messages-ws.module';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,      
       autoLoadEntities: true,
-      synchronize: false,
+      synchronize: true,
     }),
 
     ServeStaticModule.forRoot({
